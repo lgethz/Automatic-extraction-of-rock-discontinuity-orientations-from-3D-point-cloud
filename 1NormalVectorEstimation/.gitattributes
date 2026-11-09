@@ -1,0 +1,29 @@
+# 强制识别 Python 代码
+*.py linguist-language=Python
+
+# 忽略 Standard ML 文件，不计入统计
+*.ml linguist-detectable=false
+
+# 忽略数据文件
+*.csv linguist-detectable=false
+*.json linguist-detectable=false
+*.xml linguist-detectable=false
+
+# 忽略文档文件
+*.md linguist-documentation
+*.rst linguist-documentation
+docs/* linguist-documentation
+
+# 忽略配置文件
+*.yml linguist-detectable=false
+*.yaml linguist-detectable=false
+*.ini linguist-detectable=false
+*.cfg linguist-detectable=false
+*.toml linguist-detectable=false
+
+# 忽略日志和临时文件
+*.log linguist-detectable=false
+*.tmp linguist-detectable=false
+
+# 忽略 Jupyter Notebook 输出（只统计 .py，不统计 .ipynb）
+*.ipynb linguist-detectable=false

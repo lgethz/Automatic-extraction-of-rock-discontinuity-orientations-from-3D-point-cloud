@@ -1,0 +1,18 @@
+# Generated datasets, logs, and analysis results
+dataset/
+logs/
+/log/
+results/
+
+# Local Python environments
+.venv/
+
+# Python bytecode caches at any directory depth
+__pycache__/
+*.py[cod]
+
+# Local secrets
+.env
+.env.*
+
+1NormalVectorEstimation/.vscode/
