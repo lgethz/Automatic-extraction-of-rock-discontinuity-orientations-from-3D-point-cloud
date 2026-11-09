@@ -70,6 +70,18 @@ def fit_plane(planes, logger):
             min(100, len(points)),
         )
         _, plane_model = fit_plane_ransac(pcl_tmp, distance_threshold)
+        plane_model = np.asarray(plane_model, dtype=float)
+        if (
+            plane_model.shape != (4,)
+            or not np.isfinite(plane_model).all()
+            or np.linalg.norm(plane_model[:3]) <= np.finfo(float).eps
+        ):
+            logger.warning(
+                "Skipping plane %s: RANSAC returned an invalid plane model.",
+                item,
+            )
+            continue
+
         a, b, c, d = plane_model
         parameters.append([a,b,c,d,i])
         dip_angle = calculate_dip(a, b, c)

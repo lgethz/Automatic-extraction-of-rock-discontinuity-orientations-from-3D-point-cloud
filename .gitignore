@@ -4,6 +4,17 @@ logs/
 /log/
 results/
 
+# Keep the root output folders in Git without tracking their contents.
+!/dataset/
+/dataset/*
+!/dataset/.gitkeep
+!/logs/
+/logs/*
+!/logs/.gitkeep
+!/results/
+/results/*
+!/results/.gitkeep
+
 # Local Python environments
 .venv/
 
