@@ -15,7 +15,7 @@ rock discontinuity orientations from 3D point clouds via an adaptive clustering
 and surface fitting approach. *International Journal of Rock Mechanics and
 Mining Sciences, 194*, 106246.
 
-## Requirements and setup
+## Requirements and setup (For Windows)
 
 Use Python 3.10. In PowerShell, go to the repository root, create and activate
 a virtual environment, then install the dependencies:
