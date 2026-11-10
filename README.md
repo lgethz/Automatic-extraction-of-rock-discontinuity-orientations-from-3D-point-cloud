@@ -31,8 +31,9 @@ python -m pip install -r requirements.txt
 ## Input data
 
 Each input point cloud must be a numeric text `.xyz` file with at least three
-columns (`x y z`). For example, with dataset root `.\dataset`, data set
-`geology`, and data list `Ouray`, use this layout:
+columns in this order: `Easting (X) Northing (Y) Elevation (Z)`. For example,
+with dataset root `.\dataset`, data set `geology`, and data list `Ouray`, use
+this layout:
 
 ```text
 dataset/
@@ -46,6 +47,10 @@ dataset/
 `Ouray.txt` contains one point-cloud name per line, without the `.xyz`
 extension (for example, `ouray`). Each listed name must match an `.xyz` file
 in the `Ouray` folder.
+
+Dip direction is reported as an azimuth clockwise from North (+Y) toward East
+(+X): 0° = North, 90° = East, 180° = South, and 270° = West. For horizontal
+planes, dip direction is undefined and is written as `nan`.
 
 
 ## Run
@@ -92,7 +97,7 @@ Paths are relative to the current directory unless given as absolute paths.
 | `--rock-res-root` | `.\results` | Directory for extraction results. |
 | `--rock-data-suffix` | `.xyz` | Input file suffix for extraction. |
 | `--rock-file-suffix` | `.txt` | Suffix for extraction result files. |
-| `--rock-angle` | `38` | Angle threshold in degrees for grouping similar normals. |
+| `--rock-angle` | `25` | Angle threshold in degrees for grouping similar normals. |
 | `--rock-iter` | `5` | Number of clustering iterations. |
 | `--rock-min-clusters` | `100` | Minimum points required for a plane segment. |
 | `--rock-show-cluster-res` | `false` | Display clustering results. |
@@ -101,3 +106,22 @@ Paths are relative to the current directory unless given as absolute paths.
 | `--rock-save-planes-res` | `true` | Save segmented planes. |
 | `--rock-save-orientation-res` | `true` | Save extracted orientations. |
 
+
+## Output
+
+Extraction results are written to `.\results\<data-set>\<timestamp>\` by
+default. The output files use comma-separated columns; the first line is a
+commented column header.
+
+| File | Contents |
+|---|---|
+| `all_planes.txt` | Retained points and their normals: `x, y, z, nx, ny, nz, orientation_group_id, plane_segment_id`. Written when `--rock-save-planes-res true`. |
+| `parameters.txt` | Fitted plane equations: `normal_a, normal_b, normal_c, plane_offset_d, plane_id`, for `a*x + b*y + c*z + d = 0`. |
+| `orientations.txt` | Fitted plane orientations: `dip_degrees, dip_direction_degrees, plane_id`. |
+| `orientation_groups.txt` | One summary per orientation group, calculated from its successfully fitted plane segments: `group_dip_degrees, group_dip_direction_degrees, orientation_group_id, point_count`. Segment normals are combined with point-count weighting. |
+| `<count>_clustering_analysis.txt` | Points and normals assigned to orientation groups: `x, y, z, nx, ny, nz, orientation_group_id`. Written when `--rock-save-cluster-res true`. |
+| `segmented_planes.png` | Screenshot of the segmented-plane viewer, if `--rock-show-planes-res true`. |
+
+`parameters.txt`, `orientations.txt`, and `orientation_groups.txt` are written
+when `--rock-save-orientation-res true`. The plane and cluster file suffixes
+can be changed with `--rock-file-suffix`.

@@ -30,24 +30,56 @@ def calculate_dip(a, b, c):
     return dip_deg
 
 def calculate_dip_direction(a, b, c):
+    """Return dip azimuth clockwise from north for Easting, Northing, Elevation axes."""
     normal = np.asarray([a, b, c], dtype=float)
     normal_length = np.linalg.norm(normal)
     if normal_length == 0:
         raise ValueError("Cannot calculate dip direction from a zero normal.")
 
-    a, b, c = normal / normal_length
+    east, north, up = normal / normal_length
     tolerance = 1e-12
-    if np.hypot(a, b) <= tolerance:
+    if np.hypot(east, north) <= tolerance:
         return float("nan")
 
-    if abs(c) <= tolerance:
-        if b < -tolerance or (abs(b) <= tolerance and a < 0):
-            a, b = -a, -b
-    elif c < 0:
-        a, b = -a, -b
+    if abs(up) <= tolerance:
+        if north < -tolerance or (abs(north) <= tolerance and east < 0):
+            east, north = -east, -north
+    elif up < 0:
+        east, north = -east, -north
 
-    dip_direction = np.degrees(np.arctan2(a, b))
+    dip_direction = np.degrees(np.arctan2(east, north))
     return float(dip_direction % 360)
+
+
+def calculate_orientation_groups(planes, parameters):
+    segment_ids = np.unique(planes[:, -1])
+    groups = {}
+    for normal_a, normal_b, normal_c, _, plane_id in parameters:
+        segment_index = int(plane_id)
+        segment_id = segment_ids[segment_index]
+        segment = planes[planes[:, -1] == segment_id]
+        group_id = int(segment[0, -2])
+        normal = np.asarray([normal_a, normal_b, normal_c], dtype=float)
+        normal /= np.linalg.norm(normal)
+        point_count = len(segment)
+
+        if group_id not in groups:
+            groups[group_id] = [np.zeros((3, 3)), 0]
+        groups[group_id][0] += point_count * np.outer(normal, normal)
+        groups[group_id][1] += point_count
+
+    orientation_groups = []
+    for group_id, (normal_scatter, point_count) in sorted(groups.items()):
+        _, eigenvectors = np.linalg.eigh(normal_scatter)
+        normal_a, normal_b, normal_c = eigenvectors[:, -1]
+        orientation_groups.append([
+            calculate_dip(normal_a, normal_b, normal_c),
+            calculate_dip_direction(normal_a, normal_b, normal_c),
+            group_id,
+            point_count,
+        ])
+    return orientation_groups
+
 
 def fit_plane(planes, logger):
     idxs = np.unique(planes[:,-1])
