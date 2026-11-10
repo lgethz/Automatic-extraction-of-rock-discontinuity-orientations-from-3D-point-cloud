@@ -101,7 +101,3 @@ Paths are relative to the current directory unless given as absolute paths.
 | `--rock-save-planes-res` | `true` | Save segmented planes. |
 | `--rock-save-orientation-res` | `true` | Save extracted orientations. |
 
-Increase `--rock-angle` to group normals with greater angular differences;
-excessively large values can merge distinct orientations. Downsampling is
-optional; when enabled, the voxel size and maximum depth control its
-resolution.
