@@ -16,6 +16,7 @@ import random
 from ClusteringAnalysis import iukm
 from DBSCAN import idbscan
 from FitPlane import fit_plane
+from PlaneFitVisualization import distinct_colors, show_fitted_planes
 
 MAXPOINTS = 70000
 
@@ -45,6 +46,13 @@ def parase_arguments():
     parser.add_argument('--show_cluster_res', type=eval, default=False, choices=[True, False])
     parser.add_argument('--save_cluster_res', type=eval, default=True, choices=[True, False])
     parser.add_argument('--show_planes_res', type=eval, default=False, choices=[True, False])
+    parser.add_argument(
+        '--show_fitted_planes_res',
+        type=eval,
+        default=True,
+        choices=[True, False],
+        help='Show fitted plane grids with their segment points before continuing.',
+    )
     parser.add_argument('--save_planes_res', type=eval, default=True, choices=[True, False])
     parser.add_argument('--save_orientation_res', type=eval, default=True, choices=[True, False])
     
@@ -201,22 +209,18 @@ def plane_segmentation(clusters, logger):
     
     if args.show_planes_res:
         joints = np.unique(all_planes[:, -1])
-        colors = [hex_to_rgb(value) for value in cnames.values()]
-        orientation_groups = np.unique(all_planes[:, -2])
-        group_colors = {
-            group_id: colors[index % len(colors)]
-            for index, group_id in enumerate(orientation_groups)
+        plane_colors = {
+            plane_id: color
+            for plane_id, color in zip(joints, distinct_colors(len(joints)))
         }
         pcls = []
         for item in joints:
             condition = all_planes[:, -1] == item
             J_cur = all_planes[condition]
             X = J_cur[:, 0:3]
-            group_id = J_cur[0, -2]
-            color = group_colors[group_id]
             pcl_tmp = o3d.geometry.PointCloud()
             pcl_tmp.points = o3d.utility.Vector3dVector(X)
-            pcl_tmp.paint_uniform_color(color)
+            pcl_tmp.paint_uniform_color(plane_colors[item])
             pcls.append(pcl_tmp)
 
         vis = o3d.visualization.Visualizer()
@@ -248,6 +252,9 @@ def orientation_extraction(planes, logger):
     params, orientations = fit_plane(planes, logger)
     end_time = time.time()
     logger.info("The eclapsed time for orientation extraction is {}s".format(end_time-start_time))
+
+    if args.show_fitted_planes_res:
+        show_fitted_planes(planes, params, logger)
 
     if args.save_orientation_res:
         res_dir = os.path.join(args.res_root, args.data_set, str(timestamp))

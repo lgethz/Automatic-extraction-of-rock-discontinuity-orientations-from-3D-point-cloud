@@ -59,15 +59,17 @@ Run this command in PowerShell from the repository root. It uses the paths and
 parameter values shown below:
 
 ```powershell
-python .\main.py --dataset-root "C:\Users\...\DiscontinuityAnalysis\dataset" --data-set "geology" --log-root "C:\Users\...\DiscontinuityAnalysis\logs" --norm-data-list "addname" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot true --norm-k-pca 45 --norm-k-dppca 100 --norm-k-recomputation 40 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\DiscontinuityAnalysis\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 10 --rock-min-clusters 50 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-save-planes-res true --rock-save-orientation-res true
+python .\main.py --dataset-root "C:\Users\...\DiscontinuityAnalysis\dataset" --data-set "geology" --log-root "C:\Users\...\DiscontinuityAnalysis\logs" --norm-data-list "addname" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot true --norm-k-pca 45 --norm-k-dppca 100 --norm-k-recomputation 40 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\DiscontinuityAnalysis\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 10 --rock-min-clusters 50 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-planes-res true --rock-save-planes-res true --rock-save-orientation-res true
 ```
 
 The pipeline runs normal estimation once for every name in the list, then
 extracts planes and orientations from each result. After each extraction, a
-lower-hemisphere equal-area stereoplot opens in the default browser. It shows
-the plane poles as a density map, clockwise from North (+Y) toward East (+X). Stereoplot images are saved next
-to their orientation results. The plots are skipped if
-`--rock-save-orientation-res false` is set.
+3D view opens showing each fitted plane as a colored wire grid over its point
+segment. Close the Open3D window to continue; the per-plane point-to-plane RMS
+and 95th-percentile residuals are also logged. A lower-hemisphere equal-area
+stereoplot then opens in the default browser. It shows the plane poles as a
+density map, clockwise from North (+Y) toward East (+X). Stereoplot images are
+saved next to their orientation results.
 
 Update the absolute paths if the project is in a different folder. Use
 `python .\main.py --help` to see the command-line options.
@@ -108,6 +110,7 @@ Paths are relative to the current directory unless given as absolute paths.
 | `--rock-show-cluster-res` | `false` | Display clustering results. |
 | `--rock-save-cluster-res` | `true` | Save clustering results. |
 | `--rock-show-planes-res` | `false` | Display segmented planes. |
+| `--rock-show-fitted-planes` | `true` | Display fitted plane grids over their point segments before the stereoplot. |
 | `--rock-save-planes-res` | `true` | Save segmented planes. |
 | `--rock-save-orientation-res` | `true` | Save extracted orientations. |
 
