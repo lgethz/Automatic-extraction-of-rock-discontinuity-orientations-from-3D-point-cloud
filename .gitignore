@@ -17,6 +17,7 @@ results/
 
 # Local Python environments
 .venv/
+_validation
 
 # Python bytecode caches at any directory depth
 __pycache__/

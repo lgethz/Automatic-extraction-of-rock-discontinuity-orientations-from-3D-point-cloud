@@ -63,9 +63,14 @@ python .\main.py --dataset-root "C:\Users\...\DiscontinuityAnalysis\dataset" --d
 ```
 
 The pipeline runs normal estimation once for every name in the list, then
-extracts planes and orientations from each result. Update the absolute paths
-if the project is in a different folder. Use `python .\main.py --help` to see
-the command-line options.
+extracts planes and orientations from each result. After each extraction, a
+lower-hemisphere equal-area stereoplot opens in the default browser. It shows
+the plane poles as a density map, clockwise from North (+Y) toward East (+X). Stereoplot images are saved next
+to their orientation results. The plots are skipped if
+`--rock-save-orientation-res false` is set.
+
+Update the absolute paths if the project is in a different folder. Use
+`python .\main.py --help` to see the command-line options.
 
 ## Parameters
 
@@ -118,6 +123,7 @@ commented column header.
 | `all_planes.txt` | Retained points and their normals: `x, y, z, nx, ny, nz, orientation_group_id, plane_segment_id`. Written when `--rock-save-planes-res true`. |
 | `parameters.txt` | Fitted plane equations: `normal_a, normal_b, normal_c, plane_offset_d, plane_id`, for `a*x + b*y + c*z + d = 0`. |
 | `orientations.txt` | Fitted plane orientations: `dip_degrees, dip_direction_degrees, plane_id`. |
+| `orientations_<name>_stereoplot.png` | Lower-hemisphere equal-area pole-density stereoplot, opened in the default browser. |
 | `<count>_clustering_analysis.txt` | Points and normals assigned to orientation groups: `x, y, z, nx, ny, nz, orientation_group_id`. Written when `--rock-save-cluster-res true`. |
 | `segmented_planes.png` | Screenshot of the segmented-plane viewer, if `--rock-show-planes-res true`. |
 

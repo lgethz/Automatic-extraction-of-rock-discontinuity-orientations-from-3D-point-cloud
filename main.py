@@ -9,6 +9,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 NORMAL_MAIN = PROJECT_ROOT / "1NormalVectorEstimation" / "main.py"
 ROCK_MAIN = PROJECT_ROOT / "2RockDiscontinuityExtraction" / "main.py"
+STEREOPLOT_MAIN = PROJECT_ROOT / "3PlotStereoplot" / "main.py"
 
 
 def parse_bool(value):
@@ -157,6 +158,8 @@ def run_pipeline(args):
         raise FileNotFoundError(f"Normal-estimation script not found: {NORMAL_MAIN}")
     if not ROCK_MAIN.is_file():
         raise FileNotFoundError(f"Rock-extraction script not found: {ROCK_MAIN}")
+    if args.rock_save_orientation_res and not STEREOPLOT_MAIN.is_file():
+        raise FileNotFoundError(f"Stereoplot script not found: {STEREOPLOT_MAIN}")
 
     # The normal-estimation script creates its output directory with
     # os.makedirs() and expects this parent directory to exist.
@@ -224,6 +227,7 @@ def run_pipeline(args):
     # <data_set><data_suffix>, so run it once for each prediction.
     with tempfile.TemporaryDirectory(prefix="rock-extraction-") as temp_dir:
         staged_root = Path(temp_dir)
+        orientation_root = res_root / args.data_set
 
         for shape_name in shape_names:
             prediction_file = prediction_dir / f"{shape_name}.xyz"
@@ -260,6 +264,16 @@ def run_pipeline(args):
                 "--save_orientation_res", str(args.rock_save_orientation_res),
             ]
 
+            previous_orientation_times = {}
+            if args.rock_save_orientation_res and orientation_root.is_dir():
+                previous_orientation_times = {
+                    path: path.stat().st_mtime_ns
+                    for path in orientation_root.rglob(
+                        f"orientations{args.rock_file_suffix}"
+                    )
+                    if path.is_file()
+                }
+
             print(f"Running rock extraction for {shape_name}...")
             subprocess.run(
                 rock_command,
@@ -267,6 +281,38 @@ def run_pipeline(args):
                 check=True,
             )
 
+            if args.rock_save_orientation_res:
+                updated_orientation_files = [
+                    path
+                    for path in orientation_root.rglob(
+                        f"orientations{args.rock_file_suffix}"
+                    )
+                    if path.is_file()
+                    and previous_orientation_times.get(path) != path.stat().st_mtime_ns
+                ]
+                if len(updated_orientation_files) != 1:
+                    raise RuntimeError(
+                        "Could not identify the orientation output for "
+                        f"{shape_name}. Expected one updated file, found "
+                        f"{len(updated_orientation_files)}."
+                    )
+
+                subprocess.run(
+                    [
+                        sys.executable,
+                        str(STEREOPLOT_MAIN),
+                        str(updated_orientation_files[0]),
+                        "--title",
+                        shape_name,
+                    ],
+                    cwd=STEREOPLOT_MAIN.parent,
+                    check=True,
+                )
+            else:
+                print(
+                    "Stereoplot skipped because "
+                    "--rock-save-orientation-res is false."
+                )
     print("Both stages completed successfully.")
 
 
