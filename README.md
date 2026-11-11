@@ -118,10 +118,9 @@ commented column header.
 | `all_planes.txt` | Retained points and their normals: `x, y, z, nx, ny, nz, orientation_group_id, plane_segment_id`. Written when `--rock-save-planes-res true`. |
 | `parameters.txt` | Fitted plane equations: `normal_a, normal_b, normal_c, plane_offset_d, plane_id`, for `a*x + b*y + c*z + d = 0`. |
 | `orientations.txt` | Fitted plane orientations: `dip_degrees, dip_direction_degrees, plane_id`. |
-| `orientation_groups.txt` | One summary per orientation group, calculated from its successfully fitted plane segments: `group_dip_degrees, group_dip_direction_degrees, orientation_group_id, point_count`. Segment normals are combined with point-count weighting. |
 | `<count>_clustering_analysis.txt` | Points and normals assigned to orientation groups: `x, y, z, nx, ny, nz, orientation_group_id`. Written when `--rock-save-cluster-res true`. |
 | `segmented_planes.png` | Screenshot of the segmented-plane viewer, if `--rock-show-planes-res true`. |
 
-`parameters.txt`, `orientations.txt`, and `orientation_groups.txt` are written
-when `--rock-save-orientation-res true`. The plane and cluster file suffixes
-can be changed with `--rock-file-suffix`.
+`parameters.txt` and `orientations.txt` are written when
+`--rock-save-orientation-res true`. The plane and cluster file suffixes can be
+changed with `--rock-file-suffix`.

@@ -51,36 +51,6 @@ def calculate_dip_direction(a, b, c):
     return float(dip_direction % 360)
 
 
-def calculate_orientation_groups(planes, parameters):
-    segment_ids = np.unique(planes[:, -1])
-    groups = {}
-    for normal_a, normal_b, normal_c, _, plane_id in parameters:
-        segment_index = int(plane_id)
-        segment_id = segment_ids[segment_index]
-        segment = planes[planes[:, -1] == segment_id]
-        group_id = int(segment[0, -2])
-        normal = np.asarray([normal_a, normal_b, normal_c], dtype=float)
-        normal /= np.linalg.norm(normal)
-        point_count = len(segment)
-
-        if group_id not in groups:
-            groups[group_id] = [np.zeros((3, 3)), 0]
-        groups[group_id][0] += point_count * np.outer(normal, normal)
-        groups[group_id][1] += point_count
-
-    orientation_groups = []
-    for group_id, (normal_scatter, point_count) in sorted(groups.items()):
-        _, eigenvectors = np.linalg.eigh(normal_scatter)
-        normal_a, normal_b, normal_c = eigenvectors[:, -1]
-        orientation_groups.append([
-            calculate_dip(normal_a, normal_b, normal_c),
-            calculate_dip_direction(normal_a, normal_b, normal_c),
-            group_id,
-            point_count,
-        ])
-    return orientation_groups
-
-
 def fit_plane(planes, logger):
     idxs = np.unique(planes[:,-1])
     parameters = []

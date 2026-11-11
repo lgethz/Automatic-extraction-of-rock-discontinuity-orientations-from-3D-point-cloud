@@ -15,7 +15,7 @@ import random
 
 from ClusteringAnalysis import iukm
 from DBSCAN import idbscan
-from FitPlane import calculate_orientation_groups, fit_plane
+from FitPlane import fit_plane
 
 MAXPOINTS = 70000
 
@@ -250,7 +250,6 @@ def orientation_extraction(planes, logger):
     logger.info("The eclapsed time for orientation extraction is {}s".format(end_time-start_time))
 
     if args.save_orientation_res:
-        orientation_groups = calculate_orientation_groups(planes, params)
         res_dir = os.path.join(args.res_root, args.data_set, str(timestamp))
         os.makedirs(res_dir, exist_ok=True)
         file_name = 'parameters' + args.file_suffix
@@ -271,23 +270,8 @@ def orientation_extraction(planes, logger):
             fmt='%.3f',
             header='dip_degrees, dip_direction_degrees, plane_id',
         )
-        group_file_path = os.path.join(
-            res_dir,
-            'orientation_groups' + args.file_suffix,
-        )
-        np.savetxt(
-            group_file_path,
-            orientation_groups,
-            delimiter=',',
-            fmt='%.3f',
-            header=(
-                'group_dip_degrees, group_dip_direction_degrees, '
-                'orientation_group_id, point_count'
-            ),
-        )
         logger.info('The result of parameters is saved to {}'.format(file_path))
         logger.info('The result og orientations is saved to {}'.format(file_path_))
-        logger.info('The orientation-group summary is saved to %s.', group_file_path)
 
 
 args = parase_arguments()
