@@ -5,6 +5,7 @@ segments planes and calculates discontinuity orientations.
 
 ## Source
 
+This code is mainly based on:
 - Normal-vector estimation is based on
   [NormalVecotrEstimation_dppca](https://github.com/MingmingRen0616/NormalVecotrEstimation_dppca).
 - Rock discontinuity extraction is based on

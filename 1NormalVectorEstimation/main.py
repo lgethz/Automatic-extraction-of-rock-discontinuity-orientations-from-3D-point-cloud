@@ -233,22 +233,34 @@ def run(data_list):
         else:
             logger.info('No sharp points detected; retaining PCA normals.')
         end_time = time.time()
-        x_mid = (np.max(pcl_raw[:, 0]) + np.min(pcl_raw[:, 0])) / 2
-        y_mid = (np.max(pcl_raw[:, 1]) + np.min(pcl_raw[:, 1])) / 2
-        z_mid = (np.max(pcl_raw[:, 2]) + np.min(pcl_raw[:, 2])) / 2
-        view_p = np.array([x_mid, y_mid, z_mid])
-        # view_p = np.array([1.956, 14.910, -0.0965])
+
+        # x_mid = (np.max(pcl_raw[:, 0]) + np.min(pcl_raw[:, 0])) / 2
+        # y_mid = (np.max(pcl_raw[:, 1]) + np.min(pcl_raw[:, 1])) / 2
+        # z_mid = (np.max(pcl_raw[:, 2]) + np.min(pcl_raw[:, 2])) / 2
+        # view_p = np.array([x_mid, y_mid, z_mid])
+        # # view_p = np.array([1.956, 14.910, -0.0965])
+        # all_normals = [[0,0,0] if n is None else n for n in all_normals]
+        # all_normals = np.asarray(all_normals)
+        # for i in range(len(pcl_raw)):
+        #     A = all_normals[i]
+        #     B = view_p - pcl_raw[i]
+        #     dot = np.dot(A, B)
+        #     if dot > 0:
+        #         all_normals[i, 0] = -1 * all_normals[i, 0]
+        #         all_normals[i, 1] = -1 * all_normals[i, 1]
+        #         all_normals[i, 2] = -1 * all_normals[i, 2]
+        # predict_normal = all_normals
+
         all_normals = [[0,0,0] if n is None else n for n in all_normals]
         all_normals = np.asarray(all_normals)
-        for i in range(len(pcl_raw)):
-            A = all_normals[i]
-            B = view_p - pcl_raw[i]
-            dot = np.dot(A, B)
-            if dot > 0:
-                all_normals[i, 0] = -1 * all_normals[i, 0]
-                all_normals[i, 1] = -1 * all_normals[i, 1]
-                all_normals[i, 2] = -1 * all_normals[i, 2]
+        
+        # Force all normal vectors into the upper hemisphere (positive Z)
+        # This multiplies the entire [x, y, z] vector by -1 if z is negative,
+        # yielding the true 180-degree antipode.
+        all_normals[all_normals[:, 2] < 0] *= -1
+        
         predict_normal = all_normals
+
         if args.save_normal_xyz:
             normal_dir = os.path.join(output_dir, 'pred_normal')
             os.makedirs(normal_dir, exist_ok=True)
