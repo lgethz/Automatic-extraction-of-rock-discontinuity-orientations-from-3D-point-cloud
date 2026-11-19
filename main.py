@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 
@@ -55,6 +56,37 @@ def resolve_data_path(data_path):
     if len({name.casefold() for name in shape_names}) != len(shape_names):
         raise ValueError(f"Input directory has duplicate .xyz file names: {path}")
     return path, path.name, shape_names
+
+
+def _print_and_log(message, log_file):
+    print(message, flush=True)
+    log_file.write(message + "\n")
+    log_file.flush()
+
+
+def _run_and_log(command, cwd, log_file):
+    process = subprocess.Popen(
+        command,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    if process.stdout is None:
+        process.kill()
+        process.wait()
+        raise RuntimeError("Subprocess output pipe was not created.")
+
+    with process.stdout:
+        for line in process.stdout:
+            print(line, end="", flush=True)
+            log_file.write(line)
+            log_file.flush()
+
+    return_code = process.wait()
+    if return_code:
+        raise subprocess.CalledProcessError(return_code, command)
 
 
 def parse_arguments():
@@ -168,70 +200,74 @@ def run_pipeline(args):
     if args.rock_save_orientation_res and not STEREOPLOT_MAIN.is_file():
         raise FileNotFoundError(f"Stereoplot script not found: {STEREOPLOT_MAIN}")
 
-    # The normal-estimation script creates its output directory with
-    # os.makedirs() and expects this parent directory to exist.
-    normal_log_parent = log_root / data_set / input_batch
-    normal_log_parent.mkdir(parents=True, exist_ok=True)
+    log_root.mkdir(parents=True, exist_ok=True)
+    run_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
+    combined_log = log_root / f"{data_set}_{run_timestamp}.txt"
 
-    previous_runs = {
-        path
-        for path in normal_log_parent.iterdir()
-        if path.is_dir()
-    }
+    with (
+        tempfile.TemporaryDirectory(prefix="discontinuity-analysis-") as temp_dir,
+        combined_log.open("x", encoding="utf-8") as run_log,
+    ):
+        work_root = Path(temp_dir)
+        normal_log_root = work_root / "normal-logs"
+        normal_log_parent = normal_log_root / data_set / input_batch
+        normal_log_parent.mkdir(parents=True, exist_ok=True)
+        previous_runs = {
+            path
+            for path in normal_log_parent.iterdir()
+            if path.is_dir()
+        }
 
-    normal_command = [
-        sys.executable,
-        str(NORMAL_MAIN),
-        "--data_path", str(data_path),
-        "--log_root", str(log_root),
-        "--evaluate", str(args.norm_evaluate),
-        "--downsample", str(args.norm_downsample),
-        "--downsample_max_depth", str(args.norm_downsample_max_depth),
-        "--downsample_plot", str(args.norm_downsample_plot),
-        "--k_pca", str(args.norm_k_pca),
-        "--k_dppca", str(args.norm_k_dppca),
-        "--k_recomputation", str(args.norm_k_recomputation),
-        "--threshold_dummy", str(args.norm_threshold_dummy),
-        "--num_bin", str(args.norm_num_bin),
-        "--n_jobs", str(args.norm_n_jobs),
-        "--show_res", str(args.norm_show_res),
-        "--save_normal_xyz", str(args.norm_save_normal_xyz),
-        "--show_dummy", str(args.norm_show_dummy),
-        "--sigma_threshold", str(args.norm_sigma_threshold),
-        "--debug", str(args.norm_debug),
-    ]
-    if args.norm_downsample_voxel_size is not None:
-        normal_command.extend(
-            [
-                "--downsample_voxel_size",
-                str(args.norm_downsample_voxel_size),
-            ]
+        normal_command = [
+            sys.executable,
+            "-u",
+            str(NORMAL_MAIN),
+            "--data_path", str(data_path),
+            "--log_root", str(normal_log_root),
+            "--evaluate", str(args.norm_evaluate),
+            "--downsample", str(args.norm_downsample),
+            "--downsample_max_depth", str(args.norm_downsample_max_depth),
+            "--downsample_plot", str(args.norm_downsample_plot),
+            "--k_pca", str(args.norm_k_pca),
+            "--k_dppca", str(args.norm_k_dppca),
+            "--k_recomputation", str(args.norm_k_recomputation),
+            "--threshold_dummy", str(args.norm_threshold_dummy),
+            "--num_bin", str(args.norm_num_bin),
+            "--n_jobs", str(args.norm_n_jobs),
+            "--show_res", str(args.norm_show_res),
+            "--save_normal_xyz", str(args.norm_save_normal_xyz),
+            "--show_dummy", str(args.norm_show_dummy),
+            "--sigma_threshold", str(args.norm_sigma_threshold),
+            "--debug", str(args.norm_debug),
+        ]
+        if args.norm_downsample_voxel_size is not None:
+            normal_command.extend(
+                [
+                    "--downsample_voxel_size",
+                    str(args.norm_downsample_voxel_size),
+                ]
+            )
+
+        _print_and_log("Running normal-vector estimation...", run_log)
+        _run_and_log(
+            normal_command,
+            NORMAL_MAIN.parent,
+            run_log,
         )
 
-    print("Running normal-vector estimation...")
-    subprocess.run(
-        normal_command,
-        cwd=NORMAL_MAIN.parent,
-        check=True,
-    )
+        new_runs = [
+            path
+            for path in normal_log_parent.iterdir()
+            if path.is_dir() and path not in previous_runs
+        ]
+        if len(new_runs) != 1:
+            raise RuntimeError(
+                "Could not identify the normal-estimation output directory. "
+                f"Expected one new directory, found {len(new_runs)}."
+            )
 
-    new_runs = [
-        path
-        for path in normal_log_parent.iterdir()
-        if path.is_dir() and path not in previous_runs
-    ]
-    if len(new_runs) != 1:
-        raise RuntimeError(
-            "Could not identify the normal-estimation output directory. "
-            f"Expected one new directory, found {len(new_runs)}."
-        )
-
-    prediction_dir = new_runs[0] / "pred_normal"
-
-    # The extraction program reads one file named
-    # <data_set><data_suffix>, so run it once for each prediction.
-    with tempfile.TemporaryDirectory(prefix="rock-extraction-") as temp_dir:
-        staged_root = Path(temp_dir)
+        prediction_dir = new_runs[0] / "pred_normal"
+        staged_root = work_root / "rock-extraction"
         orientation_root = res_root / data_set
 
         for shape_name in shape_names:
@@ -252,11 +288,12 @@ def run_pipeline(args):
 
             rock_command = [
                 sys.executable,
+                "-u",
                 str(ROCK_MAIN),
                 "--dataset_root", str(staged_root),
                 "--data_set", data_set,
                 "--res_root", str(res_root),
-                "--log_root", str(log_root),
+                "--log_root", str(normal_log_root),
                 "--data_suffix", args.rock_data_suffix,
                 "--file_suffix", args.rock_file_suffix,
                 "--angle", str(args.rock_angle),
@@ -280,11 +317,11 @@ def run_pipeline(args):
                     if path.is_file()
                 }
 
-            print(f"Running rock extraction for {shape_name}...")
-            subprocess.run(
+            _print_and_log(f"Running rock extraction for {shape_name}...", run_log)
+            _run_and_log(
                 rock_command,
-                cwd=ROCK_MAIN.parent,
-                check=True,
+                ROCK_MAIN.parent,
+                run_log,
             )
 
             if args.rock_save_orientation_res:
@@ -303,23 +340,25 @@ def run_pipeline(args):
                         f"{len(updated_orientation_files)}."
                     )
 
-                subprocess.run(
+                _run_and_log(
                     [
                         sys.executable,
+                        "-u",
                         str(STEREOPLOT_MAIN),
                         str(updated_orientation_files[0]),
                         "--title",
                         shape_name,
                     ],
-                    cwd=STEREOPLOT_MAIN.parent,
-                    check=True,
+                    STEREOPLOT_MAIN.parent,
+                    run_log,
                 )
             else:
-                print(
+                _print_and_log(
                     "Stereoplot skipped because "
-                    "--rock-save-orientation-res is false."
+                    "--rock-save-orientation-res is false.",
+                    run_log,
                 )
-    print("Both stages completed successfully.")
+        _print_and_log("Both stages completed successfully.", run_log)
 
 
 if __name__ == "__main__":
