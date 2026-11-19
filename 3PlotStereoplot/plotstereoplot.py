@@ -98,46 +98,46 @@ def plane_pole(dip: float, dip_direction: float) -> Vector3:
 
 
 def project_pole(pole: Vector3) -> Tuple[float, float]:
-    """Project a lower-hemisphere pole to an equal-area unit disk."""
+    """Project a lower-hemisphere pole to an equal-angle unit disk."""
     east, north, down = pole
-    scale = math.sqrt(1.0 + down)
-    return east / scale, north / scale
+    return east / (1.0 + down), north / (1.0 + down)
 
 
-def estimate_density(
+def estimate_fisher_density(
     poles: np.ndarray,
     bandwidth_degrees: float = BANDWIDTH_DEGREES,
     grid_size: int = GRID_SIZE,
 ) -> np.ndarray:
-    """Estimate angular pole density on an equal-area stereonet grid."""
+    """Estimate Fisher pole density on an equal-angle stereonet grid."""
     coordinates = np.linspace(-GRID_EXTENT, GRID_EXTENT, grid_size)
     grid_x, grid_y = np.meshgrid(coordinates, coordinates)
-
-    radius = np.hypot(grid_x, grid_y)
-    scale_to_disk = np.maximum(radius, 1.0)
-    disk_x = grid_x / scale_to_disk
-    disk_y = grid_y / scale_to_disk
-    down = 1.0 - disk_x**2 - disk_y**2
-    horizontal_scale = np.sqrt(1.0 + down)
+    radius_squared = grid_x**2 + grid_y**2
+    inside = radius_squared <= 1.0
+    disk_radius_squared = radius_squared[inside]
+    denominator = 1.0 + disk_radius_squared
     grid_vectors = np.column_stack(
         (
-            (disk_x * horizontal_scale).ravel(),
-            (disk_y * horizontal_scale).ravel(),
-            down.ravel(),
+            2.0 * grid_x[inside] / denominator,
+            2.0 * grid_y[inside] / denominator,
+            (1.0 - disk_radius_squared) / denominator,
         )
     )
 
     bandwidth = math.radians(bandwidth_degrees)
-    density = np.empty(len(grid_vectors), dtype=float)
+    concentration = 1.0 / bandwidth**2
+    normalization = concentration / (
+        2.0 * math.pi * -math.expm1(-2.0 * concentration)
+    )
+    density = np.full(radius_squared.shape, np.nan, dtype=float)
+    flat_density = np.empty(len(grid_vectors), dtype=float)
     for start in range(0, len(grid_vectors), 256):
         stop = min(start + 256, len(grid_vectors))
         dots = grid_vectors[start:stop] @ poles.T
-        angles = np.arccos(np.clip(dots, -1.0, 1.0))
-        density[start:stop] = np.exp(
-            -0.5 * (angles / bandwidth) ** 2
+        flat_density[start:stop] = normalization * np.exp(
+            concentration * (dots - 1.0)
         ).mean(axis=1)
-
-    return density.reshape(grid_size, grid_size)
+    density[inside] = flat_density
+    return density
 
 
 def _output_path(input_file: Path, title: str) -> Path:
@@ -151,25 +151,39 @@ def plot_stereonet(
     input_file: Path,
     title: str,
 ) -> Path:
-    """Render a pole-density stereonet and open the resulting image."""
+    """Render Fisher density contours on a stereonet and open the image."""
     poles = np.asarray(
         [plane_pole(dip, direction) for dip, direction in measurements],
         dtype=float,
     )
     pole_points = np.asarray([project_pole(tuple(pole)) for pole in poles])
-    density = estimate_density(poles)
+    density = estimate_fisher_density(poles)
 
     figure, axes = plt.subplots(figsize=(7.4, 7.4), facecolor="#f4f6fa")
     axes.set_facecolor("#f4f6fa")
-    axes.imshow(
-        density,
-        origin="lower",
-        extent=(-GRID_EXTENT, GRID_EXTENT, -GRID_EXTENT, GRID_EXTENT),
-        interpolation="bilinear",
-        cmap=LinearSegmentedColormap.from_list(
-            "stereonet_density", DENSITY_COLORS, N=256
-        ),
+    coordinates = np.linspace(-GRID_EXTENT, GRID_EXTENT, GRID_SIZE)
+    grid_x, grid_y = np.meshgrid(coordinates, coordinates)
+    density_plot = np.ma.masked_invalid(density)
+    color_map = LinearSegmentedColormap.from_list(
+        "stereonet_fisher_density", DENSITY_COLORS, N=256
+    )
+    filled_contours = axes.contourf(
+        grid_x,
+        grid_y,
+        density_plot,
+        levels=12,
+        cmap=color_map,
         zorder=1,
+    )
+    axes.contour(
+        grid_x,
+        grid_y,
+        density_plot,
+        levels=filled_contours.levels,
+        colors="#172b42",
+        linewidths=0.3,
+        alpha=0.45,
+        zorder=2,
     )
     axes.scatter(
         pole_points[:, 0],
@@ -179,9 +193,17 @@ def plot_stereonet(
         edgecolors="#132b46",
         linewidths=0.35,
         alpha=0.65,
-        zorder=2,
+        zorder=3,
         rasterized=True,
     )
+    colorbar = figure.colorbar(
+        filled_contours,
+        ax=axes,
+        fraction=0.046,
+        pad=0.04,
+    )
+    colorbar.set_label("Fisher density (sr$^{-1}$)", color="#53657a")
+    colorbar.ax.tick_params(colors="#53657a", labelsize=8)
 
     outline = Circle(
         (0.0, 0.0),
@@ -189,7 +211,7 @@ def plot_stereonet(
         facecolor="none",
         edgecolor="#172b42",
         linewidth=1.6,
-        zorder=3,
+        zorder=4,
     )
     axes.add_patch(outline)
     for artist in axes.images + list(axes.collections):
@@ -204,7 +226,7 @@ def plot_stereonet(
             [inner_radius * math.cos(angle), outer_radius * math.cos(angle)],
             color="#263b50",
             linewidth=0.8 if azimuth % 30 == 0 else 0.55,
-            zorder=4,
+            zorder=5,
             clip_on=False,
         )
 
@@ -230,7 +252,8 @@ def plot_stereonet(
     figure.text(
         0.5,
         0.925,
-        f"Lower-hemisphere equal-area projection  |  {len(measurements)} planes",
+        "Lower-hemisphere equal-angle projection  |  "
+        f"Fisher density contours  |  {len(measurements)} planes",
         ha="center",
         fontsize=9.5,
         color="#53657a",
