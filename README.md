@@ -115,6 +115,13 @@ Paths are relative to the current directory unless given as absolute paths.
 | `--rock-save-planes-res` | `true` | Save segmented planes. |
 | `--rock-save-orientation-res` | `true` | Save extracted orientations. |
 
+### Example
+
+```powershell
+python .\main.py --dataset-root "C:\Users\...\dataset" --data-set "geology" --log-root "C:\Users\GuebeliL\...\logs" --norm-data-list "ouray" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot false --norm-k-pca 15 --norm-k-dppca 350 --norm-k-recomputation 20 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 4 --rock-min-clusters 30 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
+```
+
+
 
 ## Output
 

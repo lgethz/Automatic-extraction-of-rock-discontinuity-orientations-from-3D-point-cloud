@@ -13,6 +13,16 @@ from utils import *
 import open3d as o3d
 import random
 
+# Set all random number generators to global seed for reproducibility
+SEED = 1
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+o3d.utility.random.seed(SEED)
+
 from ClusteringAnalysis import iukm
 from DBSCAN import idbscan
 from FitPlane import fit_plane
