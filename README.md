@@ -29,6 +29,16 @@ py -3.10 -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
+If using conda, use following command to to the repository root, create and activate
+a virtual environment, then install the dependencies:
+
+```powershell
+cd "C:\path\to\DiscontinuityAnalysis"
+conda create --name discontinuity_env python=3.10 -y
+conda activate discontinuity_env
+pip install -r requirements.txt
+```
+
 ## Input data
 
 Use `--data-path` to provide either one `.xyz` file or a directory containing
