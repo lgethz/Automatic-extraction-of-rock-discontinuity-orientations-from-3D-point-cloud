@@ -31,23 +31,16 @@ python -m pip install -r requirements.txt
 
 ## Input data
 
-Each input point cloud must be a numeric text `.xyz` file with at least three
-columns in this order: `Easting (X) Northing (Y) Elevation (Z)`. For example,
-with dataset root `.\dataset`, data set `geology`, and data list `Ouray`, use
-this layout:
+Use `--data-path` to provide either one `.xyz` file or a directory containing
+`.xyz` files directly inside it. A directory is processed in filename order;
+subdirectories and non-`.xyz` files are ignored. No dataset folders or list
+file need to be created.
 
-```text
-dataset/
-└── geology/
-    └── Ouray/
-        ├── ouray.xyz
-        └── list/
-            └── Ouray.txt
-```
-
-`Ouray.txt` contains one point-cloud name per line, without the `.xyz`
-extension (for example, `ouray`). Each listed name must match an `.xyz` file
-in the `Ouray` folder.
+Each `.xyz` file must contain numeric data with at least three columns in this
+order: `Easting (X) Northing (Y) Elevation (Z)`. Extra columns are ignored by
+normal estimation. Files ending in `_gt.xyz` are treated as ground-truth
+sidecars, not input clouds. With `--norm-evaluate true`, each input needs a
+neighboring `<name>_gt.xyz` file.
 
 Dip direction is reported as an azimuth clockwise from North (+Y) toward East
 (+X): 0° = North, 90° = East, 180° = South, and 270° = West. For horizontal
@@ -60,15 +53,14 @@ Run this command in PowerShell from the repository root. It uses the paths and
 parameter values shown below:
 
 ```powershell
-python .\main.py --dataset-root "C:\Users\...\DiscontinuityAnalysis\dataset" --data-set "geology" --log-root "C:\Users\...\DiscontinuityAnalysis\logs" --norm-data-list "addname" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot true --norm-k-pca 45 --norm-k-dppca 100 --norm-k-recomputation 40 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\DiscontinuityAnalysis\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 10 --rock-min-clusters 50 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-planes-res true --rock-save-planes-res true --rock-save-orientation-res true
+python .\main.py --data-path "C:\Users\...\point_clouds" --log-root "C:\Users\...\DiscontinuityAnalysis\logs" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot true --norm-k-pca 45 --norm-k-dppca 100 --norm-k-recomputation 40 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\DiscontinuityAnalysis\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 10 --rock-min-clusters 50 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
 ```
 
-The pipeline runs normal estimation once for every name in the list, then
-extracts planes and orientations from each result. After each extraction, a
-3D view opens showing each fitted plane as a colored wire grid over its point
-segment. Close the Open3D window to continue; the per-plane point-to-plane RMS
-and 95th-percentile residuals are also logged. A lower-hemisphere equal-angle
-stereoplot then opens in the default browser. It shows plane poles with Fisher
+The pipeline runs normal estimation once for the `.xyz` file or for every `.xyz` file
+in the input directory, then extracts planes and orientations from each result.
+After each extraction, a 3D view opens showing each fitted plane as a colored
+wire grid over its point segment. Close the Open3D window to continue.
+A lower-hemisphere equal-angle stereoplot then opens in the default browser. It shows plane poles with Fisher
 density contours, clockwise from North (+Y) toward East (+X). Stereoplot images
 are saved next to their orientation results.
 
@@ -82,10 +74,8 @@ Paths are relative to the current directory unless given as absolute paths.
 
 | Option | Default | Description |
 |---|---:|---|
-| `--dataset-root` | `.\dataset` | Root directory of the input data. |
-| `--data-set` | required | Dataset directory name. |
+| `--data-path` | required | Input `.xyz` file or directory containing `.xyz` files. |
 | `--log-root` | `.\logs` | Root directory for logs from both stages. |
-| `--norm-data-list` | required | Data-list directory and list-file name. |
 | `--norm-evaluate` | `false` | Evaluate estimated normals against ground truth. |
 | `--norm-downsample` | `false` | Octree-downsample before estimating normals. |
 | `--norm-downsample-voxel-size` | `none` | Target octree leaf width in point-cloud units. |
@@ -118,7 +108,7 @@ Paths are relative to the current directory unless given as absolute paths.
 ### Example
 
 ```powershell
-python .\main.py --dataset-root "C:\Users\...\dataset" --data-set "geology" --log-root "C:\Users\GuebeliL\...\logs" --norm-data-list "ouray" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot false --norm-k-pca 15 --norm-k-dppca 350 --norm-k-recomputation 20 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 4 --rock-min-clusters 30 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
+python .\main.py --data-path "C:\Users\...\Terrace.xyz" --log-root "C:\Users\GuebeliL\...\logs" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot false --norm-k-pca 15 --norm-k-dppca 350 --norm-k-recomputation 20 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 4 --rock-min-clusters 30 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
 ```
 
 
@@ -126,8 +116,9 @@ python .\main.py --dataset-root "C:\Users\...\dataset" --data-set "geology" --lo
 ## Output
 
 Extraction results are written to `.\results\<data-set>\<timestamp>\` by
-default. The output files use comma-separated columns; the first line is a
-commented column header.
+default. With `--data-path`, `<data-set>` is the input file's stem or the
+input directory's name. The output files use comma-separated columns; the
+first line is a commented column header.
 
 | File | Contents |
 |---|---|

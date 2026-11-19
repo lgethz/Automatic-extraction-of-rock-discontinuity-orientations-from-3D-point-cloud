@@ -261,7 +261,7 @@ def plot_stereonet(
     figure.subplots_adjust(left=0.06, right=0.94, bottom=0.04, top=0.89)
 
     output_file = _output_path(input_file, title)
-    figure.savefig(output_file, dpi=180, facecolor=figure.get_facecolor())
+    figure.savefig(output_file, dpi=300, facecolor=figure.get_facecolor())
     plt.close(figure)
 
     if not webbrowser.open(output_file.resolve().as_uri(), new=2):

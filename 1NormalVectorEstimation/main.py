@@ -2,6 +2,7 @@ import os, sys
 import argparse
 import time
 import math
+from pathlib import Path
 import numpy as np
 from dataset import BaseDataset
 from utils import get_logger, creat_logger, get_log_dir, ParamManager, feature_threshold_selection, display_point_cloud_with_normals, display_downsampling_comparison, RMS, create_coordinate_frame
@@ -26,17 +27,19 @@ def parse_bool(value):
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    cur_path = os.getcwd()
     ## Dataset
-    parser.add_argument('--dataset_root', type=str, default=os.path.join(cur_path, 'dataset'))
-    parser.add_argument('--data_set', type=str, default='')
+    parser.add_argument(
+        '--data_path',
+        type=str,
+        required=True,
+        help='Path to one .xyz point cloud or a directory of .xyz point clouds.',
+    )
     parser.add_argument(
         '--log_root',
         type=str,
         default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs'),
     )
     parser.add_argument('--evaluate', type=eval, default=False, choices=[True, False])
-    parser.add_argument('--data_list', type=str, default='')
     parser.add_argument(
         '--downsample',
         type=parse_bool,
@@ -99,20 +102,20 @@ def parse_arguments():
 
 args = parse_arguments()
 
-def run(data_list):
+def run():
     # Log
     PID = os.getpid()
     time_stmp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())
-    output_dir = os.path.join(args.log_root, args.data_set, args.data_list, 'test_%s_%s_%s_%s_%s' % (args.k_dppca, args.k_pca, args.k_recomputation, args.threshold_dummy, time_stmp))
+    source_path = Path(args.data_path).expanduser().resolve()
+    data_set_name = source_path.stem if source_path.is_file() else source_path.name
+    data_list_name = 'single' if source_path.is_file() else 'files'
+    output_dir = os.path.join(args.log_root, data_set_name, data_list_name, 'test_%s_%s_%s_%s_%s' % (args.k_dppca, args.k_pca, args.k_recomputation, args.threshold_dummy, time_stmp))
     os.makedirs(output_dir, exist_ok=False)
-    logger = creat_logger('test(%d)(%s-%s)' % (PID, args.data_set, args.data_list), output_dir)
+    logger = creat_logger('test(%d)(%s-%s)' % (PID, data_set_name, data_list_name), output_dir)
     logger.info('Command: {}'.format(' '.join(sys.argv)))
 
     # dataset
-    data_set = BaseDataset(root=args.dataset_root,
-                           data_set=args.data_set,
-                           data_list=data_list,
-                           evaluate=args.evaluate)
+    data_set = BaseDataset(data_path=args.data_path, evaluate=args.evaluate)
     
     for shape_idx, shape_name in enumerate(data_set.cur_sets):
         # Normal estimation
@@ -294,4 +297,4 @@ def run(data_list):
 
 
 if __name__  == '__main__':
-    run(args.data_list)
+    run()

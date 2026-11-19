@@ -11,11 +11,9 @@ Normal vector estimation method for point clouds with the ability to preserve sh
 ## 3. Command Line Usage
 ```bash
 python main.py \
-    --dataset_root (Root directory of the dataset) \
-    --data_set (Dataset directory) \
+    --data_path (Single .xyz file or directory of .xyz files) \
     --log_root (Directory for saving logs) \
     --evaluate (Whether to perform evaluation; only available when ground truth exists) \
-    --data_list (Name of the data list) \
     --k_pca (Number of neighbors for PCA) \
     --k_dppca (Number of neighbors for DP-PCA) \
     --k_recomputation (Number of neighbors for recomputation) \

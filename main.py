@@ -27,21 +27,45 @@ def parse_bool(value):
     )
 
 
+def resolve_data_path(data_path):
+    path = Path(data_path).expanduser().resolve()
+    if path.is_file():
+        if path.suffix.lower() != ".xyz":
+            raise ValueError(f"Input file must have a .xyz extension: {path}")
+        return path, path.stem, [path.stem]
+
+    if not path.is_dir():
+        raise FileNotFoundError(
+            f"Input path does not exist or is not a file/directory: {path}"
+        )
+
+    xyz_files = sorted(
+        (
+            item
+            for item in path.iterdir()
+            if item.is_file() and item.suffix.lower() == ".xyz"
+            and not item.stem.lower().endswith("_gt")
+        ),
+        key=lambda item: item.name.casefold(),
+    )
+    if not xyz_files:
+        raise ValueError(f"No .xyz files found directly in: {path}")
+
+    shape_names = [item.stem for item in xyz_files]
+    if len({name.casefold() for name in shape_names}) != len(shape_names):
+        raise ValueError(f"Input directory has duplicate .xyz file names: {path}")
+    return path, path.name, shape_names
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Run normal estimation, followed by rock discontinuity extraction."
     )
 
-    # Shared options
     parser.add_argument(
-        "--dataset-root",
-        default=str(PROJECT_ROOT / "dataset"),
-        help="Root directory containing the input dataset.",
-    )
-    parser.add_argument(
-        "--data-set",
+        "--data-path",
         required=True,
-        help="Dataset directory/name used by both stages.",
+        help="Path to one .xyz point cloud or a directory of .xyz point clouds.",
     )
     parser.add_argument(
         "--log-root",
@@ -50,7 +74,6 @@ def parse_arguments():
     )
 
     # Normal-estimation options
-    parser.add_argument("--norm-data-list", required=True, help="Name of the normal-estimation data list.")
     parser.add_argument("--norm-evaluate", type=parse_bool, default=False)
     parser.add_argument(
         "--norm-downsample",
@@ -133,27 +156,10 @@ def parse_arguments():
 
 
 def run_pipeline(args):
-    dataset_root = Path(args.dataset_root).resolve()
     log_root = Path(args.log_root).resolve()
     res_root = Path(args.rock_res_root).resolve()
-
-    data_list_file = (
-        dataset_root
-        / args.data_set
-        / args.norm_data_list
-        / "list"
-        / f"{args.norm_data_list}.txt"
-    )
-    if not data_list_file.is_file():
-        raise FileNotFoundError(f"Data-list file not found: {data_list_file}")
-
-    shape_names = [
-        line.strip()
-        for line in data_list_file.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
-    if not shape_names:
-        raise ValueError(f"No point-cloud names found in: {data_list_file}")
+    data_path, data_set, shape_names = resolve_data_path(args.data_path)
+    input_batch = "single" if data_path.is_file() else "files"
 
     if not NORMAL_MAIN.is_file():
         raise FileNotFoundError(f"Normal-estimation script not found: {NORMAL_MAIN}")
@@ -164,7 +170,7 @@ def run_pipeline(args):
 
     # The normal-estimation script creates its output directory with
     # os.makedirs() and expects this parent directory to exist.
-    normal_log_parent = log_root / args.data_set / args.norm_data_list
+    normal_log_parent = log_root / data_set / input_batch
     normal_log_parent.mkdir(parents=True, exist_ok=True)
 
     previous_runs = {
@@ -176,11 +182,9 @@ def run_pipeline(args):
     normal_command = [
         sys.executable,
         str(NORMAL_MAIN),
-        "--dataset_root", str(dataset_root),
-        "--data_set", args.data_set,
+        "--data_path", str(data_path),
         "--log_root", str(log_root),
         "--evaluate", str(args.norm_evaluate),
-        "--data_list", args.norm_data_list,
         "--downsample", str(args.norm_downsample),
         "--downsample_max_depth", str(args.norm_downsample_max_depth),
         "--downsample_plot", str(args.norm_downsample_plot),
@@ -228,7 +232,7 @@ def run_pipeline(args):
     # <data_set><data_suffix>, so run it once for each prediction.
     with tempfile.TemporaryDirectory(prefix="rock-extraction-") as temp_dir:
         staged_root = Path(temp_dir)
-        orientation_root = res_root / args.data_set
+        orientation_root = res_root / data_set
 
         for shape_name in shape_names:
             prediction_file = prediction_dir / f"{shape_name}.xyz"
@@ -237,12 +241,12 @@ def run_pipeline(args):
                     f"Expected prediction was not created: {prediction_file}"
                 )
 
-            staged_dataset_dir = staged_root / args.data_set
+            staged_dataset_dir = staged_root / data_set
             staged_dataset_dir.mkdir(parents=True, exist_ok=True)
 
             staged_input = (
                 staged_dataset_dir
-                / f"{args.data_set}{args.rock_data_suffix}"
+                / f"{data_set}{args.rock_data_suffix}"
             )
             shutil.copy2(prediction_file, staged_input)
 
@@ -250,7 +254,7 @@ def run_pipeline(args):
                 sys.executable,
                 str(ROCK_MAIN),
                 "--dataset_root", str(staged_root),
-                "--data_set", args.data_set,
+                "--data_set", data_set,
                 "--res_root", str(res_root),
                 "--log_root", str(log_root),
                 "--data_suffix", args.rock_data_suffix,

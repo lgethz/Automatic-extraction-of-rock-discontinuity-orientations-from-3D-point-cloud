@@ -27,4 +27,7 @@ __pycache__/
 .env
 .env.*
 
+/tests/*
+tests
+
 1NormalVectorEstimation/.vscode/
