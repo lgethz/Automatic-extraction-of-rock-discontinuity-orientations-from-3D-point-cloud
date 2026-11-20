@@ -151,6 +151,10 @@ def crop_point_cloud(input_path, output_path, log_file):
         cmap="terrain",
         point_size=3,
         render_points_as_spheres=False,
+        scalar_bar_args = {
+            "title": "Höhe Z [m]",
+            "fmt": "%.1f",
+        }
     )
     plotter.add_text(
         "Polygon-Auswahl:\n"
