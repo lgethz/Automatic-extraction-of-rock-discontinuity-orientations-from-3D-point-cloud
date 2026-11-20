@@ -351,7 +351,6 @@ def parse_arguments():
         help="Path to one .xyz point cloud or a directory of .xyz point clouds.",
     )
     parser.add_argument(
-        "--cut_cloud",
         "--cut-cloud",
         dest="cut_cloud",
         type=parse_bool,
@@ -435,7 +434,7 @@ def parse_arguments():
         )
     if args.cut_cloud and args.norm_evaluate:
         parser.error(
-            "--norm-evaluate cannot be used with --cut_cloud true because "
+            "--norm-evaluate cannot be used with --cut-cloud true because "
             "ground-truth normals are not cropped with the point cloud."
         )
     if args.norm_downsample_max_depth < 0:

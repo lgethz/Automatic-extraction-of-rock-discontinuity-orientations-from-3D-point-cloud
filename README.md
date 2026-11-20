@@ -63,7 +63,7 @@ Run this command in PowerShell from the repository root. It uses the paths and
 parameter values shown below:
 
 ```powershell
-python .\main.py --data-path "C:\Users\...\point_clouds" --log-root "C:\Users\...\DiscontinuityAnalysis\logs" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot true --norm-k-pca 45 --norm-k-dppca 100 --norm-k-recomputation 40 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\DiscontinuityAnalysis\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 10 --rock-min-clusters 50 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
+python .\main.py --data-path "C:\Users\...\point_clouds" --cut-cloud true --log-root "C:\Users\...\DiscontinuityAnalysis\logs" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot true --norm-k-pca 45 --norm-k-dppca 100 --norm-k-recomputation 40 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\DiscontinuityAnalysis\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 10 --rock-min-clusters 50 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
 ```
 
 The pipeline runs normal estimation once for the `.xyz` file or for every `.xyz` file
@@ -85,7 +85,7 @@ Paths are relative to the current directory unless given as absolute paths.
 | Option | Default | Description |
 |---|---:|---|
 | `--data-path` | required | Input `.xyz` file or directory containing `.xyz` files. |
-| `--cut_cloud` | `false` | Interactively crop each input cloud before analysis. |
+| `--cut-cloud` | `false` | Interactively crop each input cloud before analysis. |
 | `--log-root` | `.\logs` | Root directory for logs from both stages. |
 | `--norm-evaluate` | `false` | Evaluate estimated normals against ground truth. |
 | `--norm-downsample` | `false` | Octree-downsample before estimating normals. |
@@ -119,7 +119,7 @@ Paths are relative to the current directory unless given as absolute paths.
 ### Example
 
 ```powershell
-python .\main.py --data-path "C:\Users\...\Terrace.xyz" --log-root "C:\Users\GuebeliL\...\logs" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot false --norm-k-pca 15 --norm-k-dppca 350 --norm-k-recomputation 20 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 4 --rock-min-clusters 30 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
+python .\main.py --data-path "C:\Users\...\Terrace.xyz" --cut-cloud True --log-root "C:\Users\GuebeliL\...\logs" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot false --norm-k-pca 15 --norm-k-dppca 350 --norm-k-recomputation 20 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 4 --rock-min-clusters 30 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
 ```
 
 
