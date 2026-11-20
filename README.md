@@ -112,7 +112,7 @@ Paths are relative to the current directory unless given as absolute paths.
 | `--rock-show-cluster-res` | `false` | Display clustering results. |
 | `--rock-save-cluster-res` | `true` | Save clustering results. |
 | `--rock-show-planes-res` | `false` | Display segmented planes. |
-| `--rock-show-fitted-planes` | `true` | Display fitted plane grids over their point segments before the stereoplot. |
+| `--rock-show-fitted-planes` | `false` | Display fitted plane grids over their point segments before the stereoplot. |
 | `--rock-save-planes-res` | `true` | Save segmented planes. |
 | `--rock-save-orientation-res` | `true` | Save extracted orientations. |
 

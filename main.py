@@ -416,7 +416,7 @@ def parse_arguments():
     parser.add_argument("--rock-show-cluster-res", type=parse_bool, default=False)
     parser.add_argument("--rock-save-cluster-res", type=parse_bool, default=True)
     parser.add_argument("--rock-show-planes-res", type=parse_bool, default=False)
-    parser.add_argument("--rock-show-fitted-planes", type=parse_bool, default=True)
+    parser.add_argument("--rock-show-fitted-planes", type=parse_bool, default=False)
     parser.add_argument("--rock-save-planes-res", type=parse_bool, default=True)
     parser.add_argument("--rock-save-orientation-res", type=parse_bool, default=True)
 

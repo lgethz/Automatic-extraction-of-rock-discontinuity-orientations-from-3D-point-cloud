@@ -59,7 +59,7 @@ def parase_arguments():
     parser.add_argument(
         '--show_fitted_planes_res',
         type=eval,
-        default=True,
+        default=False,
         choices=[True, False],
         help='Show fitted plane grids with their segment points before continuing.',
     )
