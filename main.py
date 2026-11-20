@@ -260,7 +260,7 @@ def crop_point_cloud(input_path, output_path, log_file):
 
     def confirm_selection():
         if len(vertices) < 3:
-            print("\nBitte zuerst mindestens 3 Eckpunkte setzen (Taste A).", flush=True)
+            print("\nPlease set at least 3 vertices first (Key 'A').", flush=True)
             return
         screen, visible = project_to_screen()
         inside = visible & _points_in_polygon(
@@ -272,9 +272,9 @@ def crop_point_cloud(input_path, output_path, log_file):
         selected_points.clear()
         selected_points.append(points[inside])
         print(
-            f"\nErfolg: {int(inside.sum())} Punkte ausgewählt! "
-            "Du kannst das Fenster jetzt schliessen "
-            "(oder mit N / A ein neues Polygon setzen).",
+            f"\nSuccess: {int(inside.sum())} Points selected! "
+            "You can now close the window "
+            "(or use N / A to set a new polygon).",
             flush=True,
         )
 
@@ -287,16 +287,16 @@ def crop_point_cloud(input_path, output_path, log_file):
     update_overlay()
 
     _print_and_log(
-        f"Cropping {input_path.name}: Drehe das Modell in Position, setze mit "
-        "der Taste A die Polygon-Eckpunkte an der Mausposition, bestätige mit "
-        "Enter (oder X) und schliesse dann das Fenster.",
+        f"Cropping {input_path.name}: Rotate the model into position, set the polygon vertices with "
+        "the 'A' key at the mouse position, confirm with "
+        "Enter (or X) and close the window.",
         log_file,
     )
 
     plotter.show()
 
     if not selected_points:
-        raise ValueError(f"Fehler: Es wurden keine Punkte für {input_path} ausgewählt.")
+        raise ValueError(f"Error: No points selected for {input_path}.")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     np.savetxt(output_path, selected_points[0], fmt="%.6f")
