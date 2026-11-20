@@ -11,3 +11,4 @@ scs==3.2.7.post2
 matplotlib==3.8.0
 pandas==2.1.1
 torch==2.3.0+cu121
+pyvista>=0.44.0,<0.47.0

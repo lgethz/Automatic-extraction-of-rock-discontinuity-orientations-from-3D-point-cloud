@@ -85,6 +85,7 @@ Paths are relative to the current directory unless given as absolute paths.
 | Option | Default | Description |
 |---|---:|---|
 | `--data-path` | required | Input `.xyz` file or directory containing `.xyz` files. |
+| `--cut_cloud` | `false` | Interactively crop each input cloud before analysis. |
 | `--log-root` | `.\logs` | Root directory for logs from both stages. |
 | `--norm-evaluate` | `false` | Evaluate estimated normals against ground truth. |
 | `--norm-downsample` | `false` | Octree-downsample before estimating normals. |

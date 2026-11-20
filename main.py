@@ -89,6 +89,250 @@ def _run_and_log(command, cwd, log_file):
         raise subprocess.CalledProcessError(return_code, command)
 
 
+def _points_in_polygon(xy, polygon):
+    """Vektorisierter Punkt-im-Polygon-Test (Ray Casting).
+
+    xy:      (N, 2) Bildschirmkoordinaten der Punkte
+    polygon: (M, 2) Eckpunkte des Polygons
+    """
+    import numpy as np
+
+    x = xy[:, 0]
+    y = xy[:, 1]
+    inside = np.zeros(len(xy), dtype=bool)
+    j = len(polygon) - 1
+    for i in range(len(polygon)):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        crosses = (yi > y) != (yj > y)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            x_intersect = (xj - xi) * (y - yi) / (yj - yi) + xi
+        inside ^= crosses & (x < x_intersect)
+        j = i
+    return inside
+
+
+def crop_point_cloud(input_path, output_path, log_file):
+    """Interaktives Zuschneiden einer Punktwolke mit frei gezeichnetem Polygon.
+
+    Die Auswahl ist unabhaengig von den Picking-Funktionen von PyVista (deren
+    API sich zwischen Versionen aendert): Die Polygon-Eckpunkte werden per
+    Tastendruck an der Mausposition gesetzt, danach werden alle Punkte mit der
+    Kameramatrix auf den Bildschirm projiziert und gegen das Polygon getestet.
+    """
+    import numpy as np
+    import pyvista as pv
+    from vtkmodules.vtkCommonCore import vtkPoints
+    from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
+    from vtkmodules.vtkRenderingCore import vtkActor2D, vtkPolyDataMapper2D
+
+    points = np.loadtxt(
+        input_path,
+        dtype=np.float64,
+        usecols=(0, 1, 2),
+        comments=("X", "x", "#"),
+        ndmin=2,
+    )
+    if points.shape[0] == 0:
+        raise ValueError(f"No points found in input cloud: {input_path}")
+
+    # Offset abziehen gegen Ruckeln bei grossen Koordinaten
+    offset = points.mean(axis=0)
+    local_points = points - offset
+
+    cloud = pv.PolyData(local_points)
+    # Z-Koordinaten als Farbe (erzeugt automatisch die Colourbar)
+    cloud["Hoehe (Z)"] = points[:, 2]
+
+    plotter = pv.Plotter(title=f"Crop: {input_path.name}")
+    plotter.add_points(
+        cloud,
+        scalars="Hoehe (Z)",
+        cmap="terrain",
+        point_size=3,
+        render_points_as_spheres=False,
+    )
+    plotter.add_text(
+        "Polygon-Auswahl:\n"
+        "  A       = Eckpunkt an Mausposition setzen\n"
+        "  Z       = letzten Eckpunkt entfernen\n"
+        "  N       = Polygon neu beginnen\n"
+        "  Enter/X = Auswahl bestaetigen\n"
+        "Danach Fenster schliessen.",
+        position="upper_left",
+        font_size=10,
+    )
+
+    vertices = []        # Polygon-Eckpunkte in Bildschirmpixeln
+    mouse_pos = [0, 0]   # zuletzt bekannte Mausposition
+    selected_points = []
+
+    # --- 2D-Overlay zum Anzeigen des Polygons -------------------------------
+    overlay_mapper = vtkPolyDataMapper2D()
+    overlay_actor = vtkActor2D()
+    overlay_actor.SetMapper(overlay_mapper)
+    overlay_actor.GetProperty().SetColor(1.0, 0.0, 0.0)
+    overlay_actor.GetProperty().SetLineWidth(2.0)
+    overlay_actor.GetProperty().SetPointSize(8.0)
+    try:
+        plotter.add_actor(
+            overlay_actor,
+            reset_camera=False,
+            pickable=False,
+            render=False,
+        )
+    except Exception:
+        # Fallback für PyVista-Versionen, in denen add_actor 2D-Actors ablehnt
+        plotter.renderer.AddViewProp(overlay_actor)
+
+    def update_overlay():
+        n = len(vertices)
+        vtk_points = vtkPoints()
+        for x, y in vertices:
+            vtk_points.InsertNextPoint(x, y, 0.0)
+
+        verts = vtkCellArray()
+        for i in range(n):
+            verts.InsertNextCell(1)
+            verts.InsertCellPoint(i)
+
+        lines = vtkCellArray()
+        if n >= 2:
+            closed = n >= 3
+            lines.InsertNextCell(n + (1 if closed else 0))
+            for i in range(n):
+                lines.InsertCellPoint(i)
+            if closed:
+                lines.InsertCellPoint(0)
+
+        poly = vtkPolyData()
+        poly.SetPoints(vtk_points)
+        poly.SetVerts(verts)
+        poly.SetLines(lines)
+        overlay_mapper.SetInputData(poly)
+        plotter.render()
+
+    # --- Projektion der Punktwolke auf den Bildschirm ------------------------
+    def project_to_screen():
+        width, height = plotter.render_window.GetSize()
+        matrix = plotter.camera.GetCompositeProjectionTransformMatrix(
+            width / height, -1, 1
+        )
+        m = np.array(
+            [[matrix.GetElement(i, j) for j in range(4)] for i in range(4)]
+        )
+        clip_xyz = local_points @ m[:3, :3].T + m[:3, 3]
+        w = local_points @ m[3, :3] + m[3, 3]
+        visible = w > 0  # nur Punkte vor der Kamera
+        w_safe = np.where(visible, w, 1.0)
+        ndc = clip_xyz / w_safe[:, None]
+        screen = np.column_stack(
+            (
+                (ndc[:, 0] + 1.0) * 0.5 * width,
+                (ndc[:, 1] + 1.0) * 0.5 * height,
+            )
+        )
+        return screen, visible
+
+    # --- Tastenbelegung -------------------------------------------------------
+    def on_mouse_move(obj, _event):
+        mouse_pos[:] = obj.GetEventPosition()
+
+    def add_vertex():
+        vertices.append((float(mouse_pos[0]), float(mouse_pos[1])))
+        update_overlay()
+
+    def remove_vertex():
+        if vertices:
+            vertices.pop()
+            update_overlay()
+
+    def reset_polygon():
+        vertices.clear()
+        update_overlay()
+
+    def confirm_selection():
+        if len(vertices) < 3:
+            print("\nBitte zuerst mindestens 3 Eckpunkte setzen (Taste A).", flush=True)
+            return
+        screen, visible = project_to_screen()
+        inside = visible & _points_in_polygon(
+            screen, np.asarray(vertices, dtype=np.float64)
+        )
+        if not inside.any():
+            print("\nKeine Punkte im Polygon. Bitte erneut versuchen.", flush=True)
+            return
+        selected_points.clear()
+        selected_points.append(points[inside])
+        print(
+            f"\nErfolg: {int(inside.sum())} Punkte ausgewählt! "
+            "Du kannst das Fenster jetzt schliessen "
+            "(oder mit N / A ein neues Polygon setzen).",
+            flush=True,
+        )
+
+    plotter.iren.interactor.AddObserver("MouseMoveEvent", on_mouse_move)
+    plotter.add_key_event("a", add_vertex)
+    plotter.add_key_event("z", remove_vertex)
+    plotter.add_key_event("n", reset_polygon)
+    plotter.add_key_event("Return", confirm_selection)
+    plotter.add_key_event("x", confirm_selection)
+    update_overlay()
+
+    _print_and_log(
+        f"Cropping {input_path.name}: Drehe das Modell in Position, setze mit "
+        "der Taste A die Polygon-Eckpunkte an der Mausposition, bestätige mit "
+        "Enter (oder X) und schliesse dann das Fenster.",
+        log_file,
+    )
+
+    plotter.show()
+
+    if not selected_points:
+        raise ValueError(f"Fehler: Es wurden keine Punkte für {input_path} ausgewählt.")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(output_path, selected_points[0], fmt="%.6f")
+
+    _print_and_log(
+        f"Saved cropped point cloud ({len(selected_points[0])} points) to {output_path}.",
+        log_file,
+    )
+
+
+def crop_input_clouds(data_path, data_set, res_root, run_timestamp, log_file):
+    crop_dir = res_root / data_set / f"cropped_{run_timestamp}"
+    if crop_dir.exists():
+        raise FileExistsError(f"Cropped-cloud output directory already exists: {crop_dir}")
+
+    if data_path.is_file():
+        source_files = [data_path]
+    else:
+        source_files = sorted(
+            (
+                item
+                for item in data_path.iterdir()
+                if item.is_file()
+                and item.suffix.lower() == ".xyz"
+                and not item.stem.lower().endswith("_gt")
+            ),
+            key=lambda item: item.name.casefold(),
+        )
+
+    for source_file in source_files:
+        crop_point_cloud(
+            source_file,
+            crop_dir / f"{source_file.stem}.xyz",
+            log_file,
+        )
+
+    return (
+        crop_dir / f"{source_files[0].stem}.xyz"
+        if data_path.is_file()
+        else crop_dir
+    )
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Run normal estimation, followed by rock discontinuity extraction."
@@ -98,6 +342,14 @@ def parse_arguments():
         "--data-path",
         required=True,
         help="Path to one .xyz point cloud or a directory of .xyz point clouds.",
+    )
+    parser.add_argument(
+        "--cut_cloud",
+        "--cut-cloud",
+        dest="cut_cloud",
+        type=parse_bool,
+        default=False,
+        help="Interactively crop each input cloud before analysis.",
     )
     parser.add_argument(
         "--log-root",
@@ -174,6 +426,11 @@ def parse_arguments():
             "ground-truth normals are at the original point locations. "
             "Use --norm-downsample false to evaluate at full resolution."
         )
+    if args.cut_cloud and args.norm_evaluate:
+        parser.error(
+            "--norm-evaluate cannot be used with --cut_cloud true because "
+            "ground-truth normals are not cropped with the point cloud."
+        )
     if args.norm_downsample_max_depth < 0:
         parser.error("--norm-downsample-max-depth must be non-negative.")
     if (
@@ -191,7 +448,6 @@ def run_pipeline(args):
     log_root = Path(args.log_root).resolve()
     res_root = Path(args.rock_res_root).resolve()
     data_path, data_set, shape_names = resolve_data_path(args.data_path)
-    input_batch = "single" if data_path.is_file() else "files"
 
     if not NORMAL_MAIN.is_file():
         raise FileNotFoundError(f"Normal-estimation script not found: {NORMAL_MAIN}")
@@ -208,9 +464,20 @@ def run_pipeline(args):
         tempfile.TemporaryDirectory(prefix="discontinuity-analysis-") as temp_dir,
         combined_log.open("x", encoding="utf-8") as run_log,
     ):
+        if args.cut_cloud:
+            data_path = crop_input_clouds(
+                data_path,
+                data_set,
+                res_root,
+                run_timestamp,
+                run_log,
+            )
+
+        normal_data_set = data_path.stem if data_path.is_file() else data_path.name
+        input_batch = "single" if data_path.is_file() else "files"
         work_root = Path(temp_dir)
         normal_log_root = work_root / "normal-logs"
-        normal_log_parent = normal_log_root / data_set / input_batch
+        normal_log_parent = normal_log_root / normal_data_set / input_batch
         normal_log_parent.mkdir(parents=True, exist_ok=True)
         previous_runs = {
             path
