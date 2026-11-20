@@ -135,7 +135,7 @@ def crop_point_cloud(input_path, output_path, log_file):
             comments=("X", "x", "#"),
             ndmin=2,
         )
-        
+
     if points.shape[0] == 0:
         raise ValueError(f"No points found in input cloud: {input_path}")
 
@@ -450,6 +450,47 @@ def parse_arguments():
 
     return args
 
+def shift_clouds_to_local(data_path, work_dir, shape_names):
+    import numpy as np
+    shifted_dir = work_dir / "shifted_clouds"
+    shifted_dir.mkdir(parents=True, exist_ok=True)
+    offsets = {}
+    
+    source_dir = data_path if data_path.is_dir() else data_path.parent
+    files_to_process = [data_path] if data_path.is_file() else [source_dir / f"{name}.xyz" for name in shape_names]
+    
+    for file_path in files_to_process:
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = (line.replace(",", " ") for line in f)
+            data = np.loadtxt(lines, dtype=np.float64, comments=("X", "x", "#"), ndmin=2)
+        
+        # Offset berechnen und abziehen (nur von Spalte 0, 1, 2)
+        offset = data[:, :3].mean(axis=0)
+        data[:, :3] -= offset
+        offsets[file_path.stem] = offset
+        
+        out_path = shifted_dir / file_path.name
+        np.savetxt(out_path, data, fmt="%.6f")
+        
+    new_data_path = shifted_dir / files_to_process[0].name if data_path.is_file() else shifted_dir
+    return new_data_path, offsets
+
+
+def restore_clouds_to_global(res_root, data_set, offsets):
+    import numpy as np
+    orientation_root = res_root / data_set
+    
+    # Alle .xyz-Dateien in den Ergebnissen suchen (Cluster, Planes etc.)
+    for xyz_file in orientation_root.rglob("*.xyz"):
+        matching_shape = next((shape for shape in offsets if xyz_file.name.startswith(shape)), None)
+        
+        if matching_shape:
+            data = np.loadtxt(xyz_file, dtype=np.float64, ndmin=2)
+            # Offset wieder auf X, Y, Z addieren
+            data[:, :3] += offsets[matching_shape]
+            np.savetxt(xyz_file, data, fmt="%.6f")
+
+
 
 def run_pipeline(args):
     log_root = Path(args.log_root).resolve()
@@ -479,6 +520,14 @@ def run_pipeline(args):
                 run_timestamp,
                 run_log,
             )
+
+        #--- Global Shift anwenden ---
+        _print_and_log("Applying Global Shift to center coordinates...", run_log)
+        data_path, offsets = shift_clouds_to_local(data_path, Path(temp_dir), shape_names)
+        # ----------------------------------
+
+        normal_data_set = data_path.stem if data_path.is_file() else data_path.name
+        input_batch = "single" if data_path.is_file() else "files"
 
         normal_data_set = data_path.stem if data_path.is_file() else data_path.name
         input_batch = "single" if data_path.is_file() else "files"
@@ -632,6 +681,11 @@ def run_pipeline(args):
                     "--rock-save-orientation-res is false.",
                     run_log,
                 )
+
+        # --- NEU: Global Shift wieder auf die Ergebnisse addieren ---
+        _print_and_log("Restoring original global coordinates...", run_log)
+        restore_clouds_to_global(res_root, data_set, offsets)
+        # ------------------------------------------------------------
         _print_and_log("Both stages completed successfully.", run_log)
 
 
