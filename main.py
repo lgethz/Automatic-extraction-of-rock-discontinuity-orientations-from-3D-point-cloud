@@ -126,13 +126,16 @@ def crop_point_cloud(input_path, output_path, log_file):
     from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
     from vtkmodules.vtkRenderingCore import vtkActor2D, vtkPolyDataMapper2D
 
-    points = np.loadtxt(
-        input_path,
-        dtype=np.float64,
-        usecols=(0, 1, 2),
-        comments=("X", "x", "#"),
-        ndmin=2,
-    )
+    with open(input_path, "r", encoding="utf-8") as f:
+        lines = (line.replace(",", " ") for line in f)
+        points = np.loadtxt(
+            lines,
+            dtype=np.float64,
+            usecols=(0, 1, 2),
+            comments=("X", "x", "#"),
+            ndmin=2,
+        )
+        
     if points.shape[0] == 0:
         raise ValueError(f"No points found in input cloud: {input_path}")
 
