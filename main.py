@@ -682,7 +682,7 @@ def run_pipeline(args):
                 )
 
         # --- NEU: Global Shift wieder auf die Ergebnisse addieren ---
-        _print_and_log("Restoring original global coordinates...", run_log)
+        _print_and_log("Restoring original global coordinates... (This may take a while)", run_log)
         restore_clouds_to_global(res_root, data_set, offsets)
         # ------------------------------------------------------------
         _print_and_log("Both stages completed successfully.", run_log)
