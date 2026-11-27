@@ -14,6 +14,10 @@ results/
 !/results/
 /results/*
 !/results/.gitkeep
+1NormalVectorEstimation/log/
+1NormalVectorEstimation/img/
+2RockDiscontinuityExtraction/log/
+2RockDiscontinuityExtraction/img/
 
 # Local Python environments
 .venv/
