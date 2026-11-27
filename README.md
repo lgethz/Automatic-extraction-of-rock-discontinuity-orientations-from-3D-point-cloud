@@ -69,6 +69,9 @@ parameter values shown below:
 python .\main.py --data-path "C:\Users\...\point_clouds" --cut-cloud true --log-root "C:\Users\...\DiscontinuityAnalysis\logs" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot true --norm-k-pca 45 --norm-k-dppca 100 --norm-k-recomputation 40 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\DiscontinuityAnalysis\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 10 --rock-min-clusters 50 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
 ```
 
+An easier way of running the code is directly in START.py, where the parameters can
+be edited directly in e.g. VScode and hit on run directly.
+
 The pipeline runs normal estimation once for the `.xyz` file or for every `.xyz` file
 in the input directory, then extracts planes and orientations from each result.
 
