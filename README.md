@@ -24,7 +24,7 @@ a virtual environment, then install the dependencies:
 ```powershell
 cd "C:\path\to\DiscontinuityAnalysis"
 py -3.10 -m venv .venv
-(Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass)
+(Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass) # Only if error pops up after step before
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
@@ -56,6 +56,9 @@ Dip direction is reported as an azimuth clockwise from North (+Y) toward East
 (+X): 0° = North, 90° = East, 180° = South, and 270° = West. For horizontal
 planes, dip direction is undefined and is written as `nan`.
 
+Areas, where no points are present in the point cloud, will not be recognized
+or measured by the code.
+
 
 ## Run
 
@@ -68,11 +71,9 @@ python .\main.py --data-path "C:\Users\...\point_clouds" --cut-cloud true --log-
 
 The pipeline runs normal estimation once for the `.xyz` file or for every `.xyz` file
 in the input directory, then extracts planes and orientations from each result.
-After each extraction, a 3D view opens showing each fitted plane as a colored
-wire grid over its point segment. Close the Open3D window to continue.
-A lower-hemisphere equal-angle stereoplot then opens in the default browser. It shows plane poles with Fisher
-density contours, clockwise from North (+Y) toward East (+X). Stereoplot images
-are saved next to their orientation results.
+
+The stereoplots shows the plane poles of the segemented planes with Fisher density contours,
+clockwise from North (+Y) toward East (+X). All the data is saved in the results folder
 
 Update the absolute paths if the project is in a different folder. Use
 `python .\main.py --help` to see the command-line options.
@@ -89,15 +90,15 @@ Paths are relative to the current directory unless given as absolute paths.
 | `--log-root` | `.\logs` | Root directory for logs from both stages. |
 | `--norm-evaluate` | `false` | Evaluate estimated normals against ground truth. |
 | `--norm-downsample` | `false` | Octree-downsample before estimating normals. |
-| `--norm-downsample-voxel-size` | `none` | Target octree leaf width in point-cloud units. |
-| `--norm-downsample-max-depth` | `8` | Maximum octree subdivision depth. |
+| `--norm-downsample-voxel-size` | `none` | Target octree leaf width in point-cloud units. Larger voxel size increases downsampling.  |
+| `--norm-downsample-max-depth` | `8` | Maximum octree subdivision depth. Higher subdivision depth decreases downsampling. |
 | `--norm-downsample-plot` | `false` | Display downsampling comparison before estimation. |
 | `--norm-k-pca` | `50` | PCA neighborhood size. |
 | `--norm-k-dppca` | `250` | DP-PCA neighborhood size. |
 | `--norm-k-recomputation` | `50` | Neighborhood size for normal recomputation. |
 | `--norm-threshold-dummy` | `0.7` | Threshold for identifying corner points. |
 | `--norm-num-bin` | `150` | Number of bins in the feature histogram. |
-| `--norm-n-jobs` | `4` | Number of parallel worker processes. |
+| `--norm-n-jobs` | `4` | Number of parallel worker processes. Reduce if the analysis crashes. |
 | `--norm-show-res` | `false` | Display normal-estimation results. |
 | `--norm-save-normal-xyz` | `true` | Save normals for the extraction stage; must remain true. |
 | `--norm-show-dummy` | `false` | Display invalid points during evaluation. |
@@ -122,8 +123,6 @@ Paths are relative to the current directory unless given as absolute paths.
 python .\main.py --data-path "C:\Users\...\Terrace.xyz" --cut-cloud True --log-root "C:\Users\GuebeliL\...\logs" --norm-evaluate false --norm-downsample true --norm-downsample-max-depth 8 --norm-downsample-voxel-size 0.02 --norm-downsample-plot false --norm-k-pca 15 --norm-k-dppca 350 --norm-k-recomputation 20 --norm-threshold-dummy 0.7 --norm-num-bin 150 --norm-n-jobs 4 --norm-show-res true --norm-save-normal-xyz true --norm-show-dummy false --norm-sigma-threshold 0.05 --norm-debug false --rock-res-root "C:\Users\...\results" --rock-data-suffix ".xyz" --rock-file-suffix ".txt" --rock-angle 25 --rock-iter 4 --rock-min-clusters 30 --rock-show-cluster-res false --rock-save-cluster-res true --rock-show-planes-res true --rock-show-fitted-planes true --rock-save-planes-res true --rock-save-orientation-res true
 ```
 
-
-
 ## Output
 
 Extraction results are written to `.\results\<data-set>\<timestamp>\` by
@@ -143,3 +142,24 @@ first line is a commented column header.
 `parameters.txt` and `orientations.txt` are written when
 `--rock-save-orientation-res true`. The plane and cluster file suffixes can be
 changed with `--rock-file-suffix`.
+
+
+
+## Empirical Parameter Guidelines
+
+For a point cloud with a point spacing (resolution) of **0.5–1.0 cm**, use the following baseline parameters as a starting point:
+
+| Parameter | Baseline | Adjustment Guideline |
+| :--- | :---: | :--- |
+| `--norm-downsample-max-depth` | `8` | Decrease, or disable downsampling (`--norm-downsample false`), if the input resolution is already low. |
+| `--norm-downsample-voxel-size` | `0.02` | Decrease, or disable downsampling (`--norm-downsample false`), if the input resolution is already low. |
+| `--norm-k-pca` | `15` | Decrease if the level of detail is high, small-scale features are present, or the resolution is low relative to the discontinuity scale. |
+| `--norm-k-dppca` | `350` | Decrease if the level of detail is high, small-scale features are present, or the resolution is low relative to the discontinuity scale. |
+| `--norm-k-recomputation` | `20` | Decrease if the level of detail is high, small-scale features are present, or the resolution is low relative to the discontinuity scale. |
+| `--norm-threshold-dummy` | `0.7` | Increase (e.g., `0.8–0.9`) to apply stricter filtering to edge points. |
+| `--norm-sigma-threshold` | `0.05` | Increase (e.g., `0.08-0.10`) to makes the normal-estimation stage less sensitive to surface curvature. |
+| `--norm-num-bin` | `150` | Recommended to keep at the default value of `150`. |
+| `--rock-angle` | `30` | Decrease if multiple discontinuity sets have similar orientations to prevent them from merging. |
+| `--rock-min-clusters` | `30` | Decrease if the level of detail is high, small-scale features are present, or the resolution is low relative to the discontinuity scale. |
+
+> **Note:** Always fine-tune these values according to the point cloud resolution, surface roughness, and the scale of the target geological features. You can check the fit of the planes when turning on `--rock-show-fitted-planes true`. It also helps to show the segemented planes using `--rock-show-planes-res true`.
